@@ -1,0 +1,53 @@
+FAST VS. SLOW HASHING — SPEAKER NOTES
+======================================
+Target: ~30 seconds per slide
+
+
+SLIDE 1 — Fast vs. Slow Hashing
+--------------------------------
+This presentation covers when to use fast hashing algorithms versus intentionally slow ones. The core idea is simple: speed is a feature for data integrity, but it's a vulnerability for password storage. Choosing the wrong type has real consequences — either wasted performance or compromised security.
+
+
+SLIDE 2 — Why Choosing the Right Hash Matters
+----------------------------------------------
+These three numbers tell the story. On a single RTX 4090 GPU, an attacker can try 7.4 million SHA-512 hashes per second. RC4, a deprecated cipher, still clocks 173,000 key recoveries per second. But Argon2id — an intentionally slow hash — drops that to roughly 2 per second on the same hardware. That's the difference between cracking a password database in hours versus centuries.
+
+
+SLIDE 3 — Two Categories of Hash Functions
+-------------------------------------------
+Hash functions split into two camps. Fast hashes like SHA-256 and BLAKE3 are optimized for throughput — billions per second on GPUs, deterministic output, no cost knob. Slow hashes like Argon2id and bcrypt are the opposite — deliberately expensive, with tunable work factors and, in some cases, large memory requirements that resist GPU parallelism.
+
+
+SLIDE 4 — When to Use Fast Hashes
+----------------------------------
+Fast hashes belong wherever speed matters and secrecy doesn't. File integrity checks, digital signatures, TLS packet authentication, deduplication, API tokens, and cache keys. In all these cases, throughput is the priority. BLAKE3 can hash a 6.6 gigabyte file in under two seconds. You'd never want a slow hash here — it would cripple performance for zero security benefit.
+
+
+SLIDE 5 — When to Use Slow Hashes
+----------------------------------
+Any time a low-entropy secret — a password, PIN, or passphrase — must be stored or verified, use a slow hash. The three main use cases are password storage, key derivation from passphrases, and token or PIN storage. The goal is to make each guess cost around 250 milliseconds. At that rate, an attacker trying 10 billion passwords would need roughly 79 years.
+
+
+SLIDE 6 — Slow Hash Preference Order
+-------------------------------------
+OWASP ranks these in a clear order. Argon2id is the top choice — memory-hard, GPU-resistant, and side-channel safe. Second is scrypt, also memory-hard but harder to tune correctly. Third is bcrypt — battle-tested but only 4 KB of RAM, which modern GPUs can handle. Last is PBKDF2, only for FIPS-140 compliance — it's highly GPU-parallelizable and gives attackers a 10 to 30x speed advantage.
+
+
+SLIDE 7 — What Memory-Hard and CPU-Hard Mean
+---------------------------------------------
+Memory-hard means each hash requires large amounts of RAM — 16 to 64 megabytes — which starves GPUs of parallel threads. CPU-hard means lots of cycles but almost no RAM, so GPUs with thousands of cores can still parallelize the attack. "Neither" means no cost mechanism at all — GPUs process billions per second. Memory-hardness is the key differentiator; it makes the attacker's memory the bottleneck, not just compute.
+
+
+SLIDE 8 — Secure Memory Wiping by Language
+-------------------------------------------
+Even with the right hash algorithm, the plaintext password lives in memory during processing. Rust and C/C++ can guarantee wiping. Go, C#, Java, and Swift have partial support — garbage collectors can copy data before you wipe it. Python, JavaScript, and Ruby cannot reliably wipe strings at all. This is why cryptographic libraries are written in Rust or C, even when the application is in Python or Node.
+
+
+SLIDE 9 — Common Mistakes
+--------------------------
+Four mistakes we see repeatedly. Using a fast hash like SHA-256 for passwords — GPUs crack hundreds of millions per second. Using a slow hash like bcrypt for file checksums — wastes CPU for no benefit. Storing hashes without unique salts — enables rainbow table attacks. And never updating work factors — what was slow in 2015 is fast today. Match the hash to the threat model.
+
+
+SLIDE 10 — Key Takeaways
+-------------------------
+Right hash, right job. Fast hashes for integrity, signatures, and tokens. Slow hashes for passwords, PINs, and passphrase-derived keys. Never cross them. And tune your work factors to target 250 milliseconds today, then increase them over time as hardware improves.
